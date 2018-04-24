@@ -32,8 +32,7 @@ public class GridAdapter extends RecyclerView.Adapter<GridAdapter.MyViewHolder> 
 
     @Override
     public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View itemView = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.grid_card_item, parent, false);
+        View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.grid_card_item, parent, false);
 
         return new MyViewHolder(itemView);
     }

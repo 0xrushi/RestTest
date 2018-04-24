@@ -1,5 +1,6 @@
 package com.example.h4x3d.myapplication;
 
+import android.app.ProgressDialog;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -12,6 +13,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
+import android.widget.AbsListView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 
@@ -34,28 +36,70 @@ import java.util.Collections;
 import java.util.Random;
 
 public class LatestActivity extends AppCompatActivity {
+    ArrayList<GridItemModel> itemsList;
+    GridAdapter adapter;
+    RecyclerView recyclerView;
+    boolean mIsLoading;
+    static int pagenum=1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.grid_display_layout);
 
         ImageButton refresh_btn=findViewById(R.id.refresh_btn);
+        recyclerView=findViewById(R.id.recyclerView);
+
+        final GridLayoutManager mLayoutManager=new GridLayoutManager(this, 3);
+        recyclerView.setLayoutManager(mLayoutManager);
+        itemsList=new ArrayList<>();
+        mIsLoading=true;
+
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if(newState== AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL){
+                    mIsLoading=true;
+                }
+            }
+
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+
+                int visibleItemCount = mLayoutManager.getChildCount();
+                int totalItemCount = mLayoutManager.getItemCount();
+                int pastVisibleItems = mLayoutManager.findFirstVisibleItemPosition();
+                //Log.e("dhan2",Integer.toString(visibleItemCount));
+                if (mIsLoading&&(pastVisibleItems + visibleItemCount >= totalItemCount)) {
+                    mIsLoading=false;
+                    Log.e("dhan","end occurred page no is "+pagenum);
+                    pagenum++;
+                    fetchData(pagenum);
+                }
+            }
+        });
 
         Toolbar mTopToolbar = (Toolbar) findViewById(R.id.my_toolbar);
         setSupportActionBar(mTopToolbar);
 
-        RecyclerView recyclerView;
         refresh_btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                fetchData();
+                fetchData(pagenum);
+                adapter=new GridAdapter(getApplicationContext(),itemsList);
+                recyclerView.setAdapter(adapter);
             }
         });
     }
 
-    public void fetchData(){
-        final String URL=" https://yts.am/api/v2/list_movies.json?page=2";
-
+    public void fetchData(int p){
+        final String URL="https://yts.am/api/v2/list_movies.json?page="+p;
+        final ProgressDialog progressDialog=new ProgressDialog(this);
+        progressDialog.setMessage("Loading ..");
+        progressDialog.show();
         RequestQueue requestQueue= Volley.newRequestQueue(this);
         JsonObjectRequest objectRequest =new JsonObjectRequest(
                 Request.Method.GET,
@@ -64,6 +108,7 @@ public class LatestActivity extends AppCompatActivity {
                 new Response.Listener<JSONObject>() {
                     @Override
                     public void onResponse(JSONObject response) {
+                        progressDialog.dismiss();
                         Log.d("RestResponse",response.toString());
                         if(response!=null){
                             try {
@@ -74,9 +119,17 @@ public class LatestActivity extends AppCompatActivity {
                                         JSONObject individual_item = array.getJSONObject(i);
                                         String title= (String) individual_item.get("title_long");
                                         String mediumcover_image= (String)individual_item.get("medium_cover_image");
-                                        Log.e("title",title);
+                                        GridItemModel item=new GridItemModel(title,mediumcover_image);
+                                        itemsList.add(item);
+                                        //Log.e("title",Integer.toString(itemsList.size()));
                                     }
                                 }
+                                for(GridItemModel i:itemsList)
+                                    Log.e("gridlist", i.getName());
+                                Log.e("gridlist", "---------------------------------------------------------------");
+                                adapter=new GridAdapter(getApplicationContext(),itemsList);
+                                //recyclerView.setAdapter(adapter);
+                                adapter.notifyDataSetChanged();
                             } catch (JSONException e) {
                                 e.printStackTrace();
                             }
